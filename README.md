@@ -1,7 +1,6 @@
-# reviewer-webhook
-Add me as reviewer for each PR containing Front-end (.js, .jsx, .css, .html, etc.)
-
+# Goal
 This is a Github webhook.
+The aim is to enforce a specific reviewer for every PR containing Front-end (.js, .jsx, .css, .html, etc.)
 
 # Run it
 
@@ -9,6 +8,10 @@ This is a Github webhook.
 
 # Auth Github
 It uses the process.env.GITHUB_TOKEN for authentication.
+
+# Github setting
+In the _webhooks_ setting page, add new webhook, and put the URL of your webhook server + **/payload**
+ie: `http://my-webhook-server-host:4567/payload`
 
 # Want to contribute ? 
 
