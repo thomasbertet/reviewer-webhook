@@ -4,18 +4,49 @@ var express = require("express")
 var app = express()
 var bodyParser = require("body-parser")
 var path = require('path')
-// var xhub = require("express-x-hub")
+var axios = require('axios');
 
 //Const
-var xhubSecret = "";
 var port = "4567";
 var host = "localhost";
 
-const watchedFilesGroup = ['modified', 'added'];
+const TOKEN = process.env.GITHUB_TOKEN;
+
+axios.defaults.headers.common['Authorization'] = 'token ' + TOKEN;
+
+const watchedPrActions = ['opened', 'synchronize'];
 const extWatched = ['.js', '.jsx', '.html', '.css', '.scss', '.json', '.eslintrc', '.babelrc'];
 
-//Secret key
-// app.use(xhub({ algorithm: "sha1", secret: xhubSecret }));
+function addReviewer(url) {
+    const reviewRequestUrl = url + '/requested_reviewers';
+
+    return axios.post(reviewRequestUrl, {reviewers: ['thomasbertet']}).then(function(res) {
+        console.log('added request review');
+    }).catch(function(error) {
+        console.log('Error RequestReview: ', error);
+    })
+}
+
+function getFiles(url) {
+    const filesUrl = url + '/files';
+
+    return axios.get(filesUrl).then(function(res) {
+        return res.data.map(commit => commit.filename);
+    }).catch(function(error) {
+        console.log('Error: ', error);
+    })
+}
+
+function shouldReact(filenames) {
+    for (let filename of filenames) {
+        const extension = path.extname(filename);
+        if (extWatched.indexOf(path.extname(filename)) >= 0) {
+            return true;
+        }
+    }
+
+    return false;
+}
 
 // Configure express json
 app.use(bodyParser.json());
@@ -31,48 +62,31 @@ var server = app.listen(port, host, function () {
 
 // Add default route
 app.post("/payload", function (req, res) {
-/*  if(!req.isXHubValid()){
-    res.status(400).send('Invalid X-Hub Request');
-    console.log("Secret key is invalid");
-    return
-  }*/
 
   var command = req.headers["x-github-event"];
+  const body = req.body;
 
   switch(command) {
-
-    case "pullrequest":
-      res.send("Event pullrequest trigger");
-      console.log("Create event");
+    case "pull_request":
+        const prUrl = body['pull_request'].url;
+        if (watchedPrActions.indexOf(body.action) >= 0) {
+            console.log("PR ", prUrl, 'action: ' + body.action);
+            res.send("PROCESSING OK FOR" + body['pull_request'].number);
+            // Get files
+            getFiles(prUrl)
+                .then((filenames) => {
+                    if (shouldReact(filenames)) {
+                        console.log('add reviewer');
+                        addReviewer(prUrl);
+                    } else {
+                        console.log('should not react', filenames);
+                    }
+                });
+        } else {
+            res.send("NOT PROCESSED : " + body['pull_request'].number);
+        }
       break;
-
-      case "push":
-      res.send("Event push trigger");
-
-      var commits = Array.isArray(req.body.commits) ? req.body.commits : [];
-
-      var shouldReact = false;
-
-      commits.forEach(function (commit) {
-        console.log('added', commit.added);
-          watchedFilesGroup.forEach(function(group) {
-            var files = commit[group];
-
-            files.forEach(function(filename) {
-              if (extWatched.indexOf(path.extname(filename)) >= 0) {
-                shouldReact = true;
-                console.log('matched', filename);
-              }
-            });
-          });
-      });
-
-      console.log("push Event");
-      break;
-
     default:
-      res.status(400).send("Event not supported : " + command);
-      console.log("Event not supported : " + command);
   }
 });
 
