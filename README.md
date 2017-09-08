@@ -13,6 +13,8 @@ It uses the process.env.GITHUB_TOKEN for authentication.
 In the _webhooks_ setting page, add new webhook, and put the URL of your webhook server + **/payload**
 ie: `http://my-webhook-server-host:4567/payload`
 
+Then, tick the "specific events", and choose at least `Pull request` events.
+
 # Want to contribute ? 
 
 - [ ] Add ability to configure the reviewer(s). 
